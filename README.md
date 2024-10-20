@@ -8,6 +8,11 @@ Inspired by the "Albanian virus meme" (ex: https://github.com/arwinneil/albanian
 
 TODO: screenshots and summary
 
+## Development
+
+- Developed with Visual Studio 2022
+- Relies on [MASM32 SDK](https://masm32.com/) installed on same drive as repo
+
 ## References
 
 - https://learn.microsoft.com/en-us/windows/win32/api/
