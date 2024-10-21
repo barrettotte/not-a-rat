@@ -144,6 +144,7 @@
     <ClCompile Include="src\OBJLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\debug.h" />
     <ClInclude Include="include\OBJLoader.h" />
     <ClInclude Include="include\stb_image.h" />
   </ItemGroup>

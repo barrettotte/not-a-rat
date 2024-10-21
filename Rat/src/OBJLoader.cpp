@@ -5,16 +5,19 @@
 #include <sstream>
 
 #include "OBJLoader.h"
+#include "debug.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-OBJLoader::OBJLoader() : VAO(0), VBO(0), EBO(0), textureID(0) {
+OBJLoader::OBJLoader() : VAOs(0), VBO(0), EBO(0), textureID(0), materials{} {
 	// nop
 }
 
 OBJLoader::~OBJLoader() {
-	glDeleteVertexArrays(1, &VAO);
+	for (int i = 0; i < VAOs.size(); i++) {
+		glDeleteVertexArrays(1, &VAOs[i]);
+	}
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
 }
@@ -24,10 +27,10 @@ bool OBJLoader::loadOBJ(const std::string& objPath) {
 	std::ifstream objFile(objPath);
 
 	if (!objFile.is_open()) {
-		std::cerr << "ERROR: Failed to open OBJ file: " << objPath << std::endl;
+		DEBUG_STDERR("ERROR: Failed to open OBJ file: " << objPath << std::endl);
 		return false;
 	}
-	std::cout << "Loaded " << objPath << std::endl;
+	DEBUG_STDOUT("Loaded object " << objPath << std::endl);
 
 	// get directory from OBJ file path
 	std::string::size_type slashIndex = objPath.find_last_of("/\\");
@@ -58,8 +61,8 @@ bool OBJLoader::loadOBJ(const std::string& objPath) {
 			}
 		}
 		else if (cmd == "v") {
-			Vertex vertex;
-			iss >> vertex.x >> vertex.y >> vertex.z; // vertex position
+			VertexPos vertex;
+			iss >> vertex.x >> vertex.y >> vertex.z;
 			vertices.push_back(vertex);
 		}
 		else if (cmd == "vt") {
@@ -90,7 +93,7 @@ bool OBJLoader::loadOBJ(const std::string& objPath) {
 			// comment or empty line, do nothing
 		}
 		else {
-			std::cout << "Unsupported command \"" << cmd << "\" on line " << lineNum << " in " << objPath << std::endl;
+			DEBUG_STDOUT("  Unsupported command \"" << cmd << "\" on line " << lineNum << " in " << objPath << std::endl);
 		}
 		lineNum++;
 	}
@@ -100,14 +103,16 @@ bool OBJLoader::loadOBJ(const std::string& objPath) {
 }
 
 // setup OpenGL buffers
-void OBJLoader::setupBuffers() {
+void OBJLoader::setupBuffers(int contextIdx) {
+	DEBUG_STDOUT("Setting up buffers for context " << contextIdx << std::endl);
+
 	std::vector<float> vertexData;
 	std::vector<GLsizei> indices;
 
 	// setup vertex data
 	for (const auto& face : faces) {
 		for (int i = 0; i < 3; ++i) {
-			Vertex v = vertices[face.vIdx[i]];
+			VertexPos v = vertices[face.vIdx[i]];
 			vertexData.push_back(v.x);
 			vertexData.push_back(v.y);
 			vertexData.push_back(v.z);
@@ -125,9 +130,18 @@ void OBJLoader::setupBuffers() {
 		}
 	}
 
+	// verify vertex data exists
+	if (vertexData.empty()) {
+		DEBUG_STDERR("ERROR: No vertex data to send to GPU" << std::endl);
+		std::exit(-1);
+	}
+	DEBUG_STDOUT("Setup vertex data" << std::endl);
+
 	// generate and bind VAO
+	GLuint VAO;
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
+	VAOs.push_back(VAO);
 
 	// generate VBO
 	glGenBuffers(1, &VBO);
@@ -135,32 +149,32 @@ void OBJLoader::setupBuffers() {
 	glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(float), &vertexData[0], GL_STATIC_DRAW);
 
 	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+	
 	// texture coordinate attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
-
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	
 	// normal attribute
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 
 	// generate EBO
 	glGenBuffers(1, &EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
 
 	// unbind VAO
 	glBindVertexArray(0);
 }
 
 // render the OBJ
-void OBJLoader::renderModel() {
+void OBJLoader::renderModel(int contextIdx) {
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glBindVertexArray(VAO);
+	glBindVertexArray(VAOs[contextIdx]);
 	glDrawElements(GL_TRIANGLES, (GLsizei) faces.size() * 3, GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0);
+	glBindVertexArray(0); // unbind VAO
 }
 
 // load materials from file path
@@ -168,10 +182,10 @@ bool OBJLoader::loadMaterials(const std::string& mtlPath) {
 	std::ifstream file(mtlPath);
 
 	if (!file.is_open()) {
-		std::cerr << "ERROR: Failed to open " << mtlPath << std::endl;
+		DEBUG_STDERR("  ERROR: Failed to open " << mtlPath << std::endl);
 		return false;
 	}
-	std::cout << "Loaded " << mtlPath << std::endl;
+	DEBUG_STDOUT("  Loaded material " << mtlPath << std::endl);
 
 	std::string line;
 	int lineNum = 1;
@@ -197,7 +211,7 @@ bool OBJLoader::loadMaterials(const std::string& mtlPath) {
 			// comment or empty line, do nothing
 		}
 		else {
-			std::cout << "Unsupported command \"" << cmd << "\" on line " << lineNum << " in " << mtlPath << std::endl;
+			DEBUG_STDOUT("    Unsupported command \"" << cmd << "\" on line " << lineNum << " in " << mtlPath << std::endl);
 		}
 		lineNum++;
 	}
@@ -220,7 +234,7 @@ GLuint OBJLoader::loadTexture(const std::string& texturePath) {
 	unsigned char* data = stbi_load(texturePath.c_str(), &width, &height, &channelCount, 0);
 
 	if (data) {
-		std::cout << "Loaded " << texturePath << std::endl;
+		DEBUG_STDOUT("  Loaded texture " << texturePath << " (" << width << "x" << height << ", " << channelCount << " channels)" << std::endl);
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -240,7 +254,7 @@ GLuint OBJLoader::loadTexture(const std::string& texturePath) {
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else {
-		std::cerr << "ERROR: Failed to load texture: " << texturePath << std::endl;
+		DEBUG_STDERR("  ERROR: Failed to load texture: " << texturePath << std::endl);
 	}
 	stbi_image_free(data);
 

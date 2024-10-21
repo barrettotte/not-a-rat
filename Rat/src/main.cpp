@@ -5,18 +5,17 @@
 
 // iostream include after cmath for M_PI definition
 #include <iostream>
+#include <random>
 
 #include <glad/glad.h>
-
-#ifndef _glfw3_h_
 #include <GLFW/glfw3.h>
-#endif
 
 #include "OBJLoader.h"
+#include "debug.h"
 
 const int WINDOW_WIDTH = 640;
 const int WINDOW_HEIGHT = 480;
-const int WINDOW_COUNT = 3;
+const int WINDOW_COUNT = 25;
 
 const char* RAT_PATH = "D:\\repos\\not-a-virus\\assets\\rat.obj"; // TODO: dynamic path or embed with .rc
 
@@ -198,6 +197,14 @@ void multiplyMat4(const float* a, const float* b, float* product) {
 	}
 }
 
+// get random int in range
+int getRandomInRange(int min, int max) {
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<> dis(min, max);
+	return dis(gen);
+}
+
 // change background color over time
 void setBackgroundColor(float t) {
 	float r = (sin(t * 1.0f) * 0.5f) + 0.5f;
@@ -218,39 +225,39 @@ void processInput(GLFWwindow* window) {
 
 // compile and link shaders
 GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc) {
-	int success;
+	GLint status = GL_FALSE;
 	const int LOG_SIZE = 512;
 	char log[LOG_SIZE];
 
-	std::cout << "Compiling shaders" << std::endl;
+	DEBUG_STDOUT("Compiling shaders" << std::endl);
 	
 	// compile vertex shader
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSrc, 0);
+	glShaderSource(vertexShader, 1, &vertexShaderSrc, NULL);
 	glCompileShader(vertexShader);
 
 	// check if vertex shader compiled successfully
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success) {
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
+	if (status != GL_TRUE) {
 		glGetShaderInfoLog(vertexShader, LOG_SIZE, 0, log);
-		std::cerr << "ERROR: Vertex shader compilation failed.\n" << log << std::endl;
+		DEBUG_STDERR("ERROR: Vertex shader compilation failed.\n" << log << std::endl);
 		std::exit(-1);
 	}
-	std::cout << "  - Compiled vertex shader" << std::endl;
+	DEBUG_STDOUT("  Compiled vertex shader" << std::endl);
 
 	// compile fragment shader
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSrc, 0);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSrc, NULL);
 	glCompileShader(fragmentShader);
 
 	// check if fragment shader compiled successfully
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success) {
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
+	if (status != GL_TRUE) {
 		glGetShaderInfoLog(fragmentShader, LOG_SIZE, 0, log);
-		std::cerr << "ERROR: Fragment shader compilation failed.\n" << log << std::endl;
+		DEBUG_STDERR("ERROR: Fragment shader compilation failed.\n" << log << std::endl);
 		std::exit(-1);
 	}
-	std::cout << "  - Compiled fragment shader";
+	DEBUG_STDOUT("  Compiled fragment shader" << std::endl);
 
 	// link shaders and create shader program
 	GLuint shaderProgram = glCreateProgram();
@@ -259,12 +266,12 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	glLinkProgram(shaderProgram);
 
 	// check if linked successfully
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		std::cerr << "ERROR: Shader linking failed.\n" << log << std::endl;
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
+	if (status != GL_TRUE) {
+		DEBUG_STDERR("ERROR: Shader linking failed.\n" << log << std::endl);
 		std::exit(-1);
 	}
-	std::cout << "  - Linked shaders";
+	DEBUG_STDOUT("  Linked shaders" << std::endl);
 
 	// clean up shaders (linked in program and no longer needed)
 	glDeleteShader(vertexShader);
@@ -273,66 +280,92 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	return shaderProgram;
 }
 
-// render the scene in the active window
-void renderScene(float t) {
-
-}
-
 // entry point
 int main() {
 	if (!glfwInit()) {
-		std::cerr << "ERROR: Failed to init GLFW" << std::endl;
+		DEBUG_STDERR("ERROR: Failed to init GLFW" << std::endl);
 		return -1;
 	}
+
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
+	// get primary monitor resolution
+	GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* videoMode = glfwGetVideoMode(primaryMonitor);
+	const int screenWidth = videoMode->width;
+	const int screenHeight = videoMode->height;
+	DEBUG_STDOUT("Primary monitor is " << screenWidth << "x" << screenHeight << std::endl;)
+
 	// create windows
-	/*std::vector<GLFWwindow*> windows;
+	std::vector<GLFWwindow*> windows;
 	for (int i = 0; i < WINDOW_COUNT; i++) {
-		GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "YOU HAVE BEEN RATTED.", 0, 0);
+		std::string title = "[" + std::to_string(i) + "] YOU JUST GOT RATTED.";
+		GLFWwindow* shared = (i == 0) ? NULL : windows[0];
+		GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, title.c_str(), NULL, shared);
 		
 		if (!window) {
-			std::cerr << "ERROR: Failed to create GLFW window " << i << std::endl;
+			DEBUG_STDERR("ERROR: Failed to create GLFW window " << i << std::endl);
 			glfwTerminate();
 			return -1;
 		}
+		glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+		// set window position randomly
+		int randX = getRandomInRange(10, screenWidth - WINDOW_WIDTH - 10);
+		int randY = getRandomInRange(10, screenHeight - WINDOW_HEIGHT - 10);
+		glfwSetWindowPos(window, randX, randY);
+
 		windows.push_back(window);
-	}*/
+	}
+	DEBUG_STDOUT("Created " << windows.size() << " window(s)" << std::endl);
 
-	// create window in windowed mode
-	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "YOU HAVE BEEN RATTED.", 0, 0);
-
-	if (!window) {
-		std::cerr << "ERROR: Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-		return -1;
+	for (int i = 1; i < windows.size(); i++) {
+		if (glfwGetWindowAttrib(windows.at(i), GLFW_CONTEXT_VERSION_MAJOR) == glfwGetWindowAttrib(windows.at(0), GLFW_CONTEXT_VERSION_MAJOR)) {
+			DEBUG_STDOUT("Context sharing successful for window " << i << std::endl);
+		}
+		else {
+			DEBUG_STDERR("Context sharing failed for window " << i << std::endl);
+			std::exit(-1);
+		}
 	}
 
-	glfwMakeContextCurrent(window);
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	
+	// start with first window
+	glfwMakeContextCurrent(windows[0]);
+
 	// load all OpenGL function pointers
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-		std::cerr << "ERROR: Failed to initialize GLAD" << std::endl;
+		DEBUG_STDERR("ERROR: Failed to initialize GLAD" << std::endl);
 		return -1;
 	}
 
-	// enable 3D depth to render correctly
-	glEnable(GL_DEPTH_TEST);
+	// enable wireframe mode
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	// create shader program
 	GLuint shaderProgram = createShaderProgram(VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC);
+	CHECK_ERROR_GL();
 
 	// load OBJ model
 	OBJLoader objLoader;
 	if (!objLoader.loadOBJ(RAT_PATH)) {
-		std::cerr << "ERROR: Failed to load OBJ file" << std::endl;
+		DEBUG_STDERR("ERROR: Failed to load OBJ file" << std::endl);
 		return -1;
 	}
-	objLoader.setupBuffers();
+
+	// configure each window context
+	for (int i = 0; i < windows.size(); i++) {
+
+		// setup buffers for each context
+		glfwMakeContextCurrent(windows.at(i));
+		objLoader.setupBuffers(i);
+
+		// misc config
+		glEnable(GL_DEPTH_TEST); // enable 3D depth to render correctly
+		glfwSwapInterval(1);     // enable VSync
+	}
 
 	// init matrices
 	float perspectiveMatrix[16];
@@ -350,42 +383,57 @@ int main() {
 
 	float modelMatrix[16];
 	float rotationAngleY = 0.0f;
+	float t = 0.0f;
+	GLFWwindow* window = windows[0];
 
 	// main loop (does not allow normal exit)
 	while (true) {
-		float t = (float) glfwGetTime();
+		t = (float) glfwGetTime();
 
-		// input
-		processInput(window);
+		for (int i = 0; i < windows.size(); i++) {
+			window = windows[i];
+			glfwMakeContextCurrent(window);
+			float windowOffset = i; // make each window slightly different
 
-		// clear screen
-		setBackgroundColor(t);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			// handle input
+			processInput(window);
 
-		// set shader program
-		glUseProgram(shaderProgram);
-		glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
+			// clear screen
+			setBackgroundColor(t + windowOffset);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// update model rotation matrix
-		setRotationMatrixY(rotationAngleY, rotationMatrix);
-		multiplyMat4(flipMatrix, rotationMatrix, modelMatrix); // flip, then rotate
+			// set shader program
+			glUseProgram(shaderProgram);
+			glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
+
+			// set model rotation matrix
+			setRotationMatrixY(rotationAngleY + windowOffset, rotationMatrix);
+			multiplyMat4(flipMatrix, rotationMatrix, modelMatrix); // flip, then rotate
+
+			// update matrices for shader
+			glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, modelMatrix);
+			glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, viewMatrix);
+			glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, perspectiveMatrix);
+
+			// render
+			objLoader.renderModel(i);
+
+			// swap rendering buffers
+			glfwSwapBuffers(window);
+
+			// check I/O events
+			glfwPollEvents();
+		}
+
+		// update model rotation
 		rotationAngleY += MODEL_ROTATION_SPEED;
-
-		// update matrices for shader
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, modelMatrix);
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, viewMatrix);
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, perspectiveMatrix);
-
-		// render
-		objLoader.renderModel();
-
-		// check I/O events and swap rendering buffers
-		glfwSwapBuffers(window);
-		glfwPollEvents();
 	}
 
 	// clean up
-	glfwDestroyWindow(window);
+	for (int i = 0; i < windows.size(); i++) {
+		glfwDestroyWindow(windows[i]);
+	}
 	glfwTerminate();
+
 	return 0;
 }

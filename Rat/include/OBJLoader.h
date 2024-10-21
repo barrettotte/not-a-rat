@@ -7,7 +7,7 @@
 
 #include <glad/glad.h>
 
-struct Vertex {
+struct VertexPos {
 	float x, y, z;
 };
 
@@ -38,30 +38,33 @@ public:
 	bool loadOBJ(const std::string& filePath);
 
 	// setup OpenGL buffers
-	void setupBuffers();
+	void setupBuffers(int contextIdx);
 
 	// render model
-	void renderModel();
+	void renderModel(int contextIdx);
+
+private:
+	// OBJ model data
+	std::vector<VertexPos> vertices;
+	std::vector<TexCoord> texCoords;
+	std::vector<Normal> normals;
+	std::vector<Face> faces;
+
+	// shared buffers
+	GLuint VBO, EBO;
+
+	// buffers per context
+	std::vector<GLuint> VAOs;
+
+	// materials/textures
+	std::map<std::string, Material> materials;
+	GLuint textureID;
 
 	// load materials from .mtl file
 	bool loadMaterials(const std::string& filePath);
 
 	// load texture in OpenGL
 	GLuint loadTexture(const std::string& texturePath);
-
-private:
-	// OBJ model data
-	std::vector<Vertex> vertices;
-	std::vector<TexCoord> texCoords;
-	std::vector<Normal> normals;
-	std::vector<Face> faces;
-
-	// OpenGL buffers
-	GLuint VAO, VBO, EBO;
-
-	// materials/textures
-	std::map<std::string, Material> materials;
-	GLuint textureID;
 };
 
 #endif
