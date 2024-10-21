@@ -1,8 +1,10 @@
-// Display 3D model of rat from Halo 3
+// Display rotating 3D model of rat from Halo 3
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <iostream> // iostream after cmath for M_PI define
+
+// iostream include after cmath for M_PI definition
+#include <iostream>
 
 #include <glad/glad.h>
 
@@ -12,6 +14,22 @@
 
 #include "OBJLoader.h"
 
+const int WINDOW_WIDTH = 640;
+const int WINDOW_HEIGHT = 480;
+
+const char* RAT_PATH = "D:\\repos\\not-a-virus\\assets\\rat.obj"; // TODO: dynamic path or embed with .rc
+
+// angle to increment model by each frame
+float MODEL_ROTATION_SPEED = 0.03f;
+
+// camera settings
+float CAMERA_POS[3] = {-1.0f, -1.5f, 1.5f}; // (X,Y,Z)
+float CAMERA_ASPECT = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
+float CAMERA_FOV = 20.0f * ((float) M_PI / 180.0f);
+float CAMERA_NEAR = 0.1f;
+float CAMERA_FAR = 100.0f;
+
+// GLSL for processing vertices
 const char* VERTEX_SHADER_SRC = "#version 330 core\n"
 	"layout(location = 0) in vec3 aPos;\n"                           // vertex position
 	"layout(location = 1) in vec2 aTexCoord;\n"                      // texture coord
@@ -28,6 +46,7 @@ const char* VERTEX_SHADER_SRC = "#version 330 core\n"
 	"  texCoord = aTexCoord;\n"                                      // pass texture coords
 	"}\0";
 
+// GLSL for handling color
 const char* FRAGMENT_SHADER_SRC = "#version 330 core\n"
 	"out vec4 color;\n"
 	"in vec2 texCoord;\n"
@@ -38,8 +57,8 @@ const char* FRAGMENT_SHADER_SRC = "#version 330 core\n"
 	"  color = texture(texture1, texCoord);\n"
 	"}\0";
 
-// create rotation matrix about y-axis
-void createRotationMatrixY(float angle, float* matrix) {
+// rotation matrix about y-axis
+void setRotationMatrixY(float angle, float* matrix) {
 	float cosAngle = cos(angle);
 	float sinAngle = sin(angle);
 
@@ -64,52 +83,39 @@ void createRotationMatrixY(float angle, float* matrix) {
 	matrix[15] = 1.0f;
 }
 
-// create view matrix for camera
-void createViewMatrix(float* viewMatrix, float cameraX, float cameraY, float cameraZ) {
-	// set camera position
-	float centerX = 0.0f;
-	float centerY = 0.0f;
-	float centerZ = 0.0f;
-
-	// up vector
-	float upX = 0.0f;
-	float upY = 1.0f;
-	float upZ = 0.0f;
+// view matrix for camera
+void setViewMatrix(float* viewMatrix, float cameraX, float cameraY, float cameraZ) {
+	float center[3] = {0.0f};
+	float up[3] = {0.0f, 1.0f, 0.0f};
 
 	// forward vector
-	float fwd[3] = {
-		centerX - cameraX, 
-		centerY - cameraY, 
-		centerZ - cameraZ
-	};
+	float fwd[3] = {center[0] - cameraX, center[1] - cameraY, center[2] - cameraZ};
 
 	// normalize forward vector
-	float fwdLength = sqrt(fwd[0] * fwd[0] + fwd[1] * fwd[1] + fwd[2] * fwd[2]);
+	float fwdLength = sqrt((fwd[0] * fwd[0]) + (fwd[1] * fwd[1]) + (fwd[2] * fwd[2]));
 	fwd[0] /= fwdLength;
 	fwd[1] /= fwdLength;
 	fwd[2] /= fwdLength;
 
 	// right vector
 	float right[3] = {
-		upY * fwd[2] - upZ * fwd[1],
-		upZ * fwd[0] - upX * fwd[2],
-		upX * fwd[1] - upY * fwd[0]
+		(up[1] * fwd[2]) - (up[2] * fwd[1]),
+		(up[2] * fwd[0]) - (up[0] * fwd[2]),
+		(up[0] * fwd[1]) - (up[1] * fwd[0])
 	};
 
 	// normalize right vector
-	float rightLength = sqrt(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
+	float rightLength = sqrt((right[0] * right[0]) + (right[1] * right[1]) + (right[2] * right[2]));
 	right[0] /= rightLength;
 	right[1] /= rightLength;
 	right[2] /= rightLength;
 
 	// recalculate up vector
-	float up[3] = {
-		right[1] * fwd[2] - right[2] * fwd[1],
-		right[2] * fwd[0] - right[0] * fwd[2],
-		right[0] * fwd[1] - right[1] * fwd[0]
-	};
+	up[0] = (right[1] * fwd[2]) - (right[2] * fwd[1]);
+	up[1] = (right[2] * fwd[0]) - (right[0] * fwd[2]);
+	up[2] = (right[0] * fwd[1]) - (right[1] * fwd[0]);
 
-	// create the view matrix
+	// build view matrix
 	viewMatrix[0] = right[0];
 	viewMatrix[1] = up[0];
 	viewMatrix[2] = -fwd[0];
@@ -125,14 +131,14 @@ void createViewMatrix(float* viewMatrix, float cameraX, float cameraY, float cam
 	viewMatrix[10] = -fwd[2];
 	viewMatrix[11] = 0.0f;
 
-	viewMatrix[12] = -(right[0] * cameraX + right[1] * cameraY + right[2] * cameraZ);
-	viewMatrix[13] = -(up[0] * cameraX + up[1] * cameraY + up[2] * cameraZ);
-	viewMatrix[14] = fwd[0] * cameraX + fwd[1] * cameraY + fwd[2] * cameraZ;
+	viewMatrix[12] = -((right[0] * cameraX) + (right[1] * cameraY) + (right[2] * cameraZ));
+	viewMatrix[13] = -((up[0] * cameraX) + (up[1] * cameraY) + (up[2] * cameraZ));
+	viewMatrix[14] = (fwd[0] * cameraX) + (fwd[1] * cameraY) + (fwd[2] * cameraZ);
 	viewMatrix[15] = 1.0f;
 }
 
 // projection matrix for converting 3D coords to 2D coords
-void createPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, float near, float far) {
+void setPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, float near, float far) {
 	float tanHalfFOV = tan(fov / 2.0f);
 
 	projectionMatrix[0] = 1.0f / (aspect * tanHalfFOV);
@@ -156,16 +162,15 @@ void createPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, f
 	projectionMatrix[15] = 0.0f;
 }
 
-// create matrix to flip model rightside up
-void createFlipMatrixY(float* matrix) {
-	memset(matrix, 0, 16 * sizeof(float));
+// matrix to flip on y-axis
+void setFlipMatrixY(float* matrix, float flip) {
 	matrix[0] = 1.0f;
 	matrix[1] = 0.0f;
 	matrix[2] = 0.0f;
 	matrix[3] = 0.0f;
 
 	matrix[4] = 0.0f;
-	matrix[5] = -1.0f; // flip on y-axis
+	matrix[5] = flip; // flip on y-axis
 	matrix[6] = 0.0f;
 	matrix[7] = 0.0f;
 
@@ -184,12 +189,20 @@ void createFlipMatrixY(float* matrix) {
 void multiplyMat4(const float* a, const float* b, float* product) {
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
-			product[i * 4 + j] = a[i * 4 + 0] * b[0 * 4 + j] +
-				                 a[i * 4 + 1] * b[1 * 4 + j] +
-				                 a[i * 4 + 2] * b[2 * 4 + j] +
-				                 a[i * 4 + 3] * b[3 * 4 + j];
+			product[i * 4 + j] = (a[i * 4 + 0] * b[0 * 4 + j]) +
+				                 (a[i * 4 + 1] * b[1 * 4 + j]) +
+				                 (a[i * 4 + 2] * b[2 * 4 + j]) +
+				                 (a[i * 4 + 3] * b[3 * 4 + j]);
 		}
 	}
+}
+
+// change background color over time
+void setBackgroundColor(float t) {
+	float r = (sin(t * 1.0f) * 0.5f) + 0.5f;
+	float g = (sin(t * 1.3f) * 0.5f) + 0.5f;
+	float b = (sin(t * 1.7f) * 0.5f) + 0.5f;
+	glClearColor(r, g, b, 1.0f);
 }
 
 // trigger on every window resize
@@ -199,42 +212,44 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 // handle user input
 void processInput(GLFWwindow* window) {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-		glfwSetWindowShouldClose(window, true);
-		// TODO: display message and don't actually exit
-	}
+	// nop
 }
 
 // compile and link shaders
 GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc) {
+	int success;
+	const int LOG_SIZE = 512;
+	char log[LOG_SIZE];
+
+	std::cout << "Compiling shaders" << std::endl;
 	
 	// compile vertex shader
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSrc, nullptr);
+	glShaderSource(vertexShader, 1, &vertexShaderSrc, 0);
 	glCompileShader(vertexShader);
 
 	// check if vertex shader compiled successfully
-	int success;
-	char infoLog[512];
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 	if (!success) {
-		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-		std::cerr << "Vertex shader compilation failed.\n" << infoLog << std::endl;
+		glGetShaderInfoLog(vertexShader, LOG_SIZE, 0, log);
+		std::cerr << "ERROR: Vertex shader compilation failed.\n" << log << std::endl;
 		std::exit(-1);
 	}
+	std::cout << "  - Compiled vertex shader" << std::endl;
 
 	// compile fragment shader
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSrc, nullptr);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSrc, 0);
 	glCompileShader(fragmentShader);
 
 	// check if fragment shader compiled successfully
 	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
 	if (!success) {
-		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-		std::cerr << "Fragment shader compilation failed.\n" << infoLog << std::endl;
+		glGetShaderInfoLog(fragmentShader, LOG_SIZE, 0, log);
+		std::cerr << "ERROR: Fragment shader compilation failed.\n" << log << std::endl;
 		std::exit(-1);
 	}
+	std::cout << "  - Compiled fragment shader";
 
 	// link shaders and create shader program
 	GLuint shaderProgram = glCreateProgram();
@@ -245,9 +260,10 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	// check if linked successfully
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
 	if (!success) {
-		std::cerr << "Shader linking failed.\n" << infoLog << std::endl;
+		std::cerr << "ERROR: Shader linking failed.\n" << log << std::endl;
 		std::exit(-1);
 	}
+	std::cout << "  - Linked shaders";
 
 	// clean up shaders (linked in program and no longer needed)
 	glDeleteShader(vertexShader);
@@ -258,11 +274,8 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 
 // entry point
 int main() {
-	std::cout << "Rat initializing..." << std::endl;
-	int windowWidth = 640;
-	int windowHeight = 480;
-
 	if (!glfwInit()) {
+		std::cerr << "ERROR: Failed to init GLFW" << std::endl;
 		return -1;
 	}
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -270,10 +283,10 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// create window in windowed mode
-	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "YOU HAVE BEEN RATTED.", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "YOU HAVE BEEN RATTED.", 0, 0);
 
 	if (!window) {
-		std::cout << "ERROR: Failed to create GLFW window" << std::endl;
+		std::cerr << "ERROR: Failed to create GLFW window" << std::endl;
 		glfwTerminate();
 		return -1;
 	}
@@ -282,76 +295,65 @@ int main() {
 	
 	// load all OpenGL function pointers
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-		std::cout << "ERROR: Failed to initialize GLAD" << std::endl;
+		std::cerr << "ERROR: Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
 
 	// enable 3D depth to render correctly
 	glEnable(GL_DEPTH_TEST);
 
-	// enable wireframe
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
 	// create shader program
 	GLuint shaderProgram = createShaderProgram(VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC);
 
 	// load OBJ model
 	OBJLoader objLoader;
-	if (!objLoader.loadOBJ("../assets/rat.obj")) {
-		std::cout << "Failed to load OBJ file" << std::endl;
+	if (!objLoader.loadOBJ(RAT_PATH)) {
+		std::cerr << "ERROR: Failed to load OBJ file" << std::endl;
 		return -1;
 	}
 	objLoader.setupBuffers();
 
-	// model matrix
-	float modelMatrix[16];
-
-	// camera settings
-	float fov = 20.0f * (M_PI / 180.0f);
-	float aspect = (float) windowWidth / (float) windowHeight;
-	float near = 0.1f;
-	float far = 100.0f;
-
+	// init matrices
 	float perspectiveMatrix[16];
-	createPerspectiveMatrix(perspectiveMatrix, fov, aspect, near, far);
+	setPerspectiveMatrix(perspectiveMatrix, CAMERA_FOV, CAMERA_ASPECT, CAMERA_NEAR, CAMERA_FAR);
 
 	float viewMatrix[16];
-	createViewMatrix(viewMatrix, 0.0f, -0.25f, 2.5f);
+	setViewMatrix(viewMatrix, CAMERA_POS[0], CAMERA_POS[1], CAMERA_POS[2]);
 
 	float rotationMatrix[16];
-	createRotationMatrixY(0.0f, rotationMatrix);
+	setRotationMatrixY(0.0f, rotationMatrix);
 
+	// OBJ gets exported upside down, fix it by flipping on Y-axis
 	float flipMatrix[16];
-	createFlipMatrixY(flipMatrix);
+	setFlipMatrixY(flipMatrix, -1.0f);
 
+	float modelMatrix[16];
 	float rotationAngleY = 0.0f;
 
-	// main loop
+	// main loop (does not allow normal exit)
 	while (true) {
-		// note: use cannot exit normally
+		float t = (float) glfwGetTime();
 
 		// input
 		processInput(window);
 
 		// clear screen
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black
+		setBackgroundColor(t);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// set shader program
 		glUseProgram(shaderProgram);
-
-		// set texture for shader
 		glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
 
-		// update projection and view matrices
+		// update model rotation matrix
+		setRotationMatrixY(rotationAngleY, rotationMatrix);
+		multiplyMat4(flipMatrix, rotationMatrix, modelMatrix); // flip, then rotate
+		rotationAngleY += MODEL_ROTATION_SPEED;
+
+		// update matrices for shader
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, modelMatrix);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, viewMatrix);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, perspectiveMatrix);
-
-		// update model rotation matrix
-		createRotationMatrixY(rotationAngleY, rotationMatrix);
-		multiplyMat4(flipMatrix, rotationMatrix, modelMatrix); // flip, then rotate
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, modelMatrix);
-		rotationAngleY += 0.03f;
 
 		// render
 		objLoader.renderModel();

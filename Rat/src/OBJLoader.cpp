@@ -1,9 +1,8 @@
-// load OBJ file
+// parse and load OBJ file
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <filesystem>
 
 #include "OBJLoader.h"
 
@@ -15,7 +14,6 @@ OBJLoader::OBJLoader() : VAO(0), VBO(0), EBO(0), textureID(0) {
 }
 
 OBJLoader::~OBJLoader() {
-	// cleanup buffers
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
@@ -26,7 +24,7 @@ bool OBJLoader::loadOBJ(const std::string& objPath) {
 	std::ifstream objFile(objPath);
 
 	if (!objFile.is_open()) {
-		std::cerr << "Failed to open OBJ file: " << objPath << std::endl;
+		std::cerr << "ERROR: Failed to open OBJ file: " << objPath << std::endl;
 		return false;
 	}
 	std::cout << "Loaded " << objPath << std::endl;
@@ -36,22 +34,22 @@ bool OBJLoader::loadOBJ(const std::string& objPath) {
 	std::string dir = (slashIndex != std::string::npos) ? objPath.substr(0, slashIndex) : "";
 
 	std::string line;
+	int lineNum = 1;
 	std::string currentMaterialName;
 
+	// parse OBJ commands
 	while (std::getline(objFile, line)) {
 		std::istringstream iss(line);
 		std::string cmd;
 		iss >> cmd;
 
 		if (cmd == "mtllib") {
-			// load material reference
 			std::string mtlFileName;
 			iss >> mtlFileName;
 			std::string mtlFilePath = dir + "/" + mtlFileName;
 			loadMaterials(mtlFilePath);
 		}
 		else if (cmd == "usemtl") {
-			// load texture for material
 			iss >> currentMaterialName;
 
 			// load texture for material
@@ -60,50 +58,51 @@ bool OBJLoader::loadOBJ(const std::string& objPath) {
 			}
 		}
 		else if (cmd == "v") {
-			// vertex position
-
 			Vertex vertex;
-			iss >> vertex.x >> vertex.y >> vertex.z;
+			iss >> vertex.x >> vertex.y >> vertex.z; // vertex position
 			vertices.push_back(vertex);
 		}
 		else if (cmd == "vt") {
-			// texture coordinate
-
 			TexCoord texCoord;
-			iss >> texCoord.u >> texCoord.v;
-			texCoord.v = 1.0f - texCoord.v; // flip
+			iss >> texCoord.u >> texCoord.v; // UV coordinates
+			texCoord.v = 1.0f - texCoord.v; // flip, OBJ's UV map seemed to export upside down
 			texCoords.push_back(texCoord);
 		}
 		else if (cmd == "vn") {
-			// normal
 			Normal normal;
-			iss >> normal.nx >> normal.ny >> normal.nz;
+			iss >> normal.nx >> normal.ny >> normal.nz; // normals
 			normals.push_back(normal);
 		}
 		else if (cmd == "f") {
-			// face, one indexing in OBJ files
 			Face face;
-			char slash;
+			char separator;
 
 			for (int i = 0; i < 3; ++i) {
-				iss >> face.vIdx[i] >> slash >> face.tIdx[i] >> slash >> face.nIdx[i];
-				// convert to zero indexing
+				iss >> face.vIdx[i] >> separator >> face.tIdx[i] >> separator >> face.nIdx[i];
+				// convert from one to zero indexing
 				face.vIdx[i]--;
 				face.tIdx[i]--;
 				face.nIdx[i]--;
 			}
 			faces.push_back(face);
 		}
+		else if (cmd == "#" || cmd == " " || cmd == "") {
+			// comment or empty line, do nothing
+		}
+		else {
+			std::cout << "Unsupported command \"" << cmd << "\" on line " << lineNum << " in " << objPath << std::endl;
+		}
+		lineNum++;
 	}
-
 	objFile.close();
+
 	return true;
 }
 
 // setup OpenGL buffers
 void OBJLoader::setupBuffers() {
 	std::vector<float> vertexData;
-	std::vector<unsigned int> indices;
+	std::vector<GLsizei> indices;
 
 	// setup vertex data
 	for (const auto& face : faces) {
@@ -122,7 +121,7 @@ void OBJLoader::setupBuffers() {
 			vertexData.push_back(n.ny);
 			vertexData.push_back(n.nz);
 
-			indices.push_back(indices.size());
+			indices.push_back((GLsizei) indices.size());
 		}
 	}
 
@@ -156,10 +155,11 @@ void OBJLoader::setupBuffers() {
 	glBindVertexArray(0);
 }
 
+// render the OBJ
 void OBJLoader::renderModel() {
 	glBindTexture(GL_TEXTURE_2D, textureID);
 	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, faces.size() * 3, GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, (GLsizei) faces.size() * 3, GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 }
 
@@ -168,17 +168,20 @@ bool OBJLoader::loadMaterials(const std::string& mtlPath) {
 	std::ifstream file(mtlPath);
 
 	if (!file.is_open()) {
-		std::cerr << "Failed to open " << mtlPath << std::endl;
+		std::cerr << "ERROR: Failed to open " << mtlPath << std::endl;
 		return false;
 	}
 	std::cout << "Loaded " << mtlPath << std::endl;
 
 	std::string line;
+	int lineNum = 1;
 	Material currentMaterial;
 
+	// parse MTL commands
 	while (std::getline(file, line)) {
 		std::istringstream iss(line);
 		std::string cmd;
+		
 		iss >> cmd;
 
 		if (cmd == "newmtl") {
@@ -190,6 +193,13 @@ bool OBJLoader::loadMaterials(const std::string& mtlPath) {
 		else if (cmd == "map_Kd") {
 			iss >> currentMaterial.texturePath; // diffuse map
 		}
+		else if (cmd == "#" || cmd == " " || cmd == "") {
+			// comment or empty line, do nothing
+		}
+		else {
+			std::cout << "Unsupported command \"" << cmd << "\" on line " << lineNum << " in " << mtlPath << std::endl;
+		}
+		lineNum++;
 	}
 
 	if (!currentMaterial.name.empty()) {
@@ -230,10 +240,8 @@ GLuint OBJLoader::loadTexture(const std::string& texturePath) {
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else {
-		std::cerr << "Failed to load texture: " << texturePath << std::endl;
+		std::cerr << "ERROR: Failed to load texture: " << texturePath << std::endl;
 	}
-
-	// clean up
 	stbi_image_free(data);
 
 	return textureID;
