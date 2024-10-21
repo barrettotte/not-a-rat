@@ -270,7 +270,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// create window in windowed mode
-	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Behold. Rat.", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "YOU HAVE BEEN RATTED.", NULL, NULL);
 
 	if (!window) {
 		std::cout << "ERROR: Failed to create GLFW window" << std::endl;
@@ -290,7 +290,7 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 
 	// enable wireframe
-	 //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	// create shader program
 	GLuint shaderProgram = createShaderProgram(VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC);
@@ -307,19 +307,19 @@ int main() {
 	float modelMatrix[16];
 
 	// camera settings
-	float fov = 45.0f * (M_PI / 180.0f);
-	float aspect = 1.0f * windowWidth / windowHeight;
+	float fov = 20.0f * (M_PI / 180.0f);
+	float aspect = (float) windowWidth / (float) windowHeight;
 	float near = 0.1f;
 	float far = 100.0f;
 
 	float perspectiveMatrix[16];
 	createPerspectiveMatrix(perspectiveMatrix, fov, aspect, near, far);
 
+	float viewMatrix[16];
+	createViewMatrix(viewMatrix, 0.0f, -0.25f, 2.5f);
+
 	float rotationMatrix[16];
 	createRotationMatrixY(0.0f, rotationMatrix);
-
-	float viewMatrix[16];
-	createViewMatrix(viewMatrix, 0.0f, 0.0f, 3.0f);
 
 	float flipMatrix[16];
 	createFlipMatrixY(flipMatrix);
@@ -327,8 +327,8 @@ int main() {
 	float rotationAngleY = 0.0f;
 
 	// main loop
-	while (!glfwWindowShouldClose(window)) {
-		// TODO: disable window close
+	while (true) {
+		// note: use cannot exit normally
 
 		// input
 		processInput(window);

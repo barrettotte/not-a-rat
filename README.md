@@ -13,6 +13,8 @@ This was an excuse to refresh on a little MASM and learn the basics of OpenGL.
 - Displays text saying that a "Rat" has been installed at Desktop
 - `rat.exe` displays rotating 3D model of a Rat from Halo 3 (Get it? ...Rat as in RAT...)
 
+TODO: package rat assets in binary with .rc files
+
 TODO: screenshots and summary
 
 ## Development

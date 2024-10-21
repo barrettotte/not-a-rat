@@ -22,17 +22,18 @@ OBJLoader::~OBJLoader() {
 }
 
 // parse and load OBJ model at file path
-bool OBJLoader::loadOBJ(const std::string& filePath) {
-	std::ifstream objFile(filePath);
+bool OBJLoader::loadOBJ(const std::string& objPath) {
+	std::ifstream objFile(objPath);
 
 	if (!objFile.is_open()) {
-		std::cerr << "Failed to open OBJ file: " << filePath << std::endl;
+		std::cerr << "Failed to open OBJ file: " << objPath << std::endl;
 		return false;
 	}
+	std::cout << "Loaded " << objPath << std::endl;
 
 	// get directory from OBJ file path
-	std::string::size_type slashIndex = filePath.find_last_of("/\\");
-	std::string objDirStr = (slashIndex != std::string::npos) ? filePath.substr(0, slashIndex) : "";
+	std::string::size_type slashIndex = objPath.find_last_of("/\\");
+	std::string dir = (slashIndex != std::string::npos) ? objPath.substr(0, slashIndex) : "";
 
 	std::string line;
 	std::string currentMaterialName;
@@ -46,7 +47,7 @@ bool OBJLoader::loadOBJ(const std::string& filePath) {
 			// load material reference
 			std::string mtlFileName;
 			iss >> mtlFileName;
-			std::string mtlFilePath = objDirStr + "/" + mtlFileName;
+			std::string mtlFilePath = dir + "/" + mtlFileName;
 			loadMaterials(mtlFilePath);
 		}
 		else if (cmd == "usemtl") {
@@ -55,7 +56,7 @@ bool OBJLoader::loadOBJ(const std::string& filePath) {
 
 			// load texture for material
 			if (materials.count(currentMaterialName) > 0) {
-				textureID = loadTexture(objDirStr + "/" + materials[currentMaterialName].texturePath);
+				textureID = loadTexture(dir + "/" + materials[currentMaterialName].texturePath);
 			}
 		}
 		else if (cmd == "v") {
