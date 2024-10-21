@@ -16,6 +16,7 @@
 
 const int WINDOW_WIDTH = 640;
 const int WINDOW_HEIGHT = 480;
+const int WINDOW_COUNT = 3;
 
 const char* RAT_PATH = "D:\\repos\\not-a-virus\\assets\\rat.obj"; // TODO: dynamic path or embed with .rc
 
@@ -272,6 +273,11 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	return shaderProgram;
 }
 
+// render the scene in the active window
+void renderScene(float t) {
+
+}
+
 // entry point
 int main() {
 	if (!glfwInit()) {
@@ -281,6 +287,20 @@ int main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+	// create windows
+	/*std::vector<GLFWwindow*> windows;
+	for (int i = 0; i < WINDOW_COUNT; i++) {
+		GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "YOU HAVE BEEN RATTED.", 0, 0);
+		
+		if (!window) {
+			std::cerr << "ERROR: Failed to create GLFW window " << i << std::endl;
+			glfwTerminate();
+			return -1;
+		}
+		windows.push_back(window);
+	}*/
 
 	// create window in windowed mode
 	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "YOU HAVE BEEN RATTED.", 0, 0);
@@ -290,6 +310,7 @@ int main() {
 		glfwTerminate();
 		return -1;
 	}
+
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	
@@ -364,6 +385,7 @@ int main() {
 	}
 
 	// clean up
+	glfwDestroyWindow(window);
 	glfwTerminate();
 	return 0;
 }
