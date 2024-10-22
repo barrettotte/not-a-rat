@@ -147,6 +147,10 @@
     <ClInclude Include="include\debug.h" />
     <ClInclude Include="include\OBJLoader.h" />
     <ClInclude Include="include\stb_image.h" />
+    <ClInclude Include="include\resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Rat.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

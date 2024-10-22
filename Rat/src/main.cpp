@@ -3,8 +3,8 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
-// iostream include after cmath for M_PI definition
-#include <iostream>
+#include <iostream> // iostream include after cmath for M_PI definition
+#include <map>
 #include <random>
 
 #include <glad/glad.h>
@@ -12,12 +12,19 @@
 
 #include "OBJLoader.h"
 #include "debug.h"
+#include "resource.h"
 
+// window settings
+const int WINDOW_COUNT = 25;
 const int WINDOW_WIDTH = 640;
 const int WINDOW_HEIGHT = 480;
-const int WINDOW_COUNT = 25;
 
-const char* RAT_PATH = "D:\\repos\\not-a-virus\\assets\\rat.obj"; // TODO: dynamic path or embed with .rc
+// create mapping between embedded resource ID and filename
+std::map<std::string, int> RESOURCE_MAPPING = {
+	{"rat.obj", RAT_OBJ},
+	{"rat.png", RAT_PNG},
+	{"rat.mtl", RAT_MTL}
+};
 
 // angle to increment model by each frame
 float MODEL_ROTATION_SPEED = 0.03f;
@@ -138,7 +145,7 @@ void setViewMatrix(float* viewMatrix, float cameraX, float cameraY, float camera
 }
 
 // projection matrix for converting 3D coords to 2D coords
-void setPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, float near, float far) {
+void setPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, float camNear, float camFar) {
 	float tanHalfFOV = tan(fov / 2.0f);
 
 	projectionMatrix[0] = 1.0f / (aspect * tanHalfFOV);
@@ -153,12 +160,12 @@ void setPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, floa
 
 	projectionMatrix[8] = 0.0f;
 	projectionMatrix[9] = 0.0f;
-	projectionMatrix[10] = -(far + near) / (far - near);
+	projectionMatrix[10] = -(camFar + camNear) / (camFar - camNear);
 	projectionMatrix[11] = -1.0f;
 
 	projectionMatrix[12] = 0.0f;
 	projectionMatrix[13] = 0.0f;
-	projectionMatrix[14] = -(2.0f * far * near) / (far - near);
+	projectionMatrix[14] = -(2.0f * camFar * camNear) / (camFar - camNear);
 	projectionMatrix[15] = 0.0f;
 }
 
@@ -216,11 +223,6 @@ void setBackgroundColor(float t) {
 // trigger on every window resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
-}
-
-// handle user input
-void processInput(GLFWwindow* window) {
-	// nop
 }
 
 // compile and link shaders
@@ -281,7 +283,7 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 }
 
 // entry point
-int main() {
+int main(int argc, char** argv) {
 	if (!glfwInit()) {
 		DEBUG_STDERR("ERROR: Failed to init GLFW" << std::endl);
 		return -1;
@@ -302,7 +304,7 @@ int main() {
 	// create windows
 	std::vector<GLFWwindow*> windows;
 	for (int i = 0; i < WINDOW_COUNT; i++) {
-		std::string title = "[" + std::to_string(i) + "] YOU JUST GOT RATTED.";
+		std::string title = "[" + std::to_string(i) + "] YOU JUST GOT RATTED!";
 		GLFWwindow* shared = (i == 0) ? NULL : windows[0];
 		GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, title.c_str(), NULL, shared);
 		
@@ -320,6 +322,7 @@ int main() {
 
 		windows.push_back(window);
 	}
+
 	DEBUG_STDOUT("Created " << windows.size() << " window(s)" << std::endl);
 
 	for (int i = 1; i < windows.size(); i++) {
@@ -348,9 +351,17 @@ int main() {
 	GLuint shaderProgram = createShaderProgram(VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC);
 	CHECK_ERROR_GL();
 
-	// load OBJ model
 	OBJLoader objLoader;
-	if (!objLoader.loadOBJ(RAT_PATH)) {
+	objLoader.setResourceMapping(RESOURCE_MAPPING);
+
+	// load OBJ model from filesystem
+	//if (!objLoader.loadObj("assets/rat.obj")) {
+	//	DEBUG_STDERR("ERROR: Failed to load OBJ file" << std::endl);
+	//	return -1;
+	//}
+
+	// load embedded OBJ model
+	if (!objLoader.loadEmbeddedObj("rat.obj")) {
 		DEBUG_STDERR("ERROR: Failed to load OBJ file" << std::endl);
 		return -1;
 	}
@@ -393,10 +404,7 @@ int main() {
 		for (int i = 0; i < windows.size(); i++) {
 			window = windows[i];
 			glfwMakeContextCurrent(window);
-			float windowOffset = i; // make each window slightly different
-
-			// handle input
-			processInput(window);
+			int windowOffset = i; // make each window slightly different
 
 			// clear screen
 			setBackgroundColor(t + windowOffset);
