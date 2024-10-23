@@ -2,8 +2,6 @@
 
 A joke "virus" using OpenGL and a little MASM.
 
-Get it? Rat as in RAT (Remote Access Trojan)...
-
 This was an excuse to learn the basics of parsing an OBJ file and rendering a 3D model in OpenGL.
 I also wanted to little refresh on MASM which is why the installer is in assembly.
 
@@ -19,6 +17,8 @@ This is making me very interested in AV bypass though, so I'll probably do somet
 - After clicking "Yes", installer downloads "second stage" named `Rat.exe` and places it on Desktop
 - Message box notifies that install was successful and `Rat.exe` is executed
 - `Rat.exe` displays multiple windows of rotating 3D model of a rat from Halo 3
+
+Get it? Rat as in RAT (Remote Access Trojan)...
 
 <br>
 
