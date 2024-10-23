@@ -29,9 +29,6 @@
     <ClInclude Include="include\OBJLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\stb_image.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\debug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
