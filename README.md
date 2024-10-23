@@ -1,24 +1,26 @@
-# not-a-virus
+# not-a-rat
 
 A joke "virus" using OpenGL and a little MASM.
 
-This was an excuse to learn the basics of parsing an OBJ file
-and rendering a 3D model in OpenGL.
+Get it? Rat as in RAT (Remote Access Trojan)...
 
-I also wanted to refresh on MASM a little which is why the installer is in assembly.
+This was an excuse to learn the basics of parsing an OBJ file and rendering a 3D model in OpenGL.
+I also wanted to little refresh on MASM which is why the installer is in assembly.
+
+This is really just a toy and obviously gets hit by Microsoft Smart Screen immediately 
+and is not in any way stealthy or practical.
+This is making me very interested in AV bypass though, so I'll probably do something related to this in the future.
 
 ## Summary
 
-- User runs installer, `Discord-Nitro-Free-2024-v2.7.exe`
+- User runs installer, `Discord-Nitro-Free-2024-v2.7.exe` (this will pop Microsoft Smart Screen)
 - Prompts user if they trust the program and want to install
   - Clicking "No", just continues to display prompt
-- After clicking "Yes", installer downloads "second stage" named `Rat.exe` and places on Desktop
-- Alert that install was successful pops up and `Rat.exe` is executed
-- `Rat.exe` displays mutliple windows of rotating 3D model of a rat from Halo 3 
+- After clicking "Yes", installer downloads "second stage" named `Rat.exe` and places it on Desktop
+- Message box notifies that install was successful and `Rat.exe` is executed
+- `Rat.exe` displays multiple windows of rotating 3D model of a rat from Halo 3
 
-Get it? Rat as in RAT (Remote Access Trojan)...haha...
 
-TODO: screenshots/video
 
 ## Asset Prep
 
@@ -30,9 +32,11 @@ TODO: screenshots/video
 
 ## Limitations
 
+- I limited Windows Defender checks by using `InternetOpen`, `InternetOpenUrl`, and `CreateProcess` in `Installer/src/main.asm`.
+  But, Microsoft Smart Screen is still popped due to being unsigned
 - Materials are restricted to only diffuse maps
-- Textures have to be 4-bit BMP format
-- I probably have some memory leaks, I'm not a C++ master...
+- Textures have to be 4-bit BMP format; I was trying to minimize executable size
+- I probably have some memory leaks, I'm not a C++ expert...
 
 ## Development
 
