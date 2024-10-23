@@ -3,7 +3,7 @@
 // Used by Rat.rc
 
 #define RAT_OBJ 601
-#define RAT_PNG 602
+#define RAT_BMP 602
 #define RAT_MTL 603
 
 // Next default values for new objects

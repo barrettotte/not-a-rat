@@ -1,16 +1,12 @@
-// parse and load OBJ file
+// parse and load embedded OBJ file
 
 #include <iostream>
-#include <fstream>
 #include <sstream>
 #include <windows.h>
 
 #include "OBJLoader.h"
 #include "debug.h"
 #include "resource.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 OBJLoader::OBJLoader() : VAOs(0), VBO(0), EBO(0), textureID(0), materials{} {
 	// nop
@@ -22,15 +18,16 @@ OBJLoader::~OBJLoader() {
 	}
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
+	glDeleteTextures(1, &textureID);
 }
 
 // set resource mapping for embedded files
-void OBJLoader::setResourceMapping(std::map<std::string, int> resMapping) {
-	resourceMapping = resMapping;
+void OBJLoader::setResourceMapping(std::map<std::string, int> rm) {
+	resourceMapping = rm;
 }
 
 // load embedded resource using rc file and resource header definitions
-std::stringstream OBJLoader::loadEmbeddedResourceStream(const std::string& fileName) {
+std::stringstream OBJLoader::loadEmbeddedResource(const std::string& fileName) {
 	
 	// check if mapping existings for embedded file
 	if (!resourceMapping.count(fileName)) {
@@ -39,7 +36,7 @@ std::stringstream OBJLoader::loadEmbeddedResourceStream(const std::string& fileN
 	}
 
 	// get resource ID from embedded file name
-	int resourceId = resourceMapping[fileName];
+	const int resourceId = resourceMapping[fileName];
 	const WCHAR* resourceName = MAKEINTRESOURCE(resourceId);
 	HRSRC hResource = FindResource(NULL, resourceName, RT_RCDATA);
 
@@ -63,60 +60,59 @@ std::stringstream OBJLoader::loadEmbeddedResourceStream(const std::string& fileN
 		std::exit(-1);
 	}
 	std::stringstream resourceStream(std::string(static_cast<char*>(pResourceData), resourceSize));
-
 	return resourceStream;
 }
 
 // parse and load OBJ model
-bool OBJLoader::parseObj(std::stringstream& objStream, const std::string& filePrefix, bool isEmbedded) {
+bool OBJLoader::parseObj(std::stringstream& objStream) {
 	std::string line;
 	int lineNum = 1;
-	std::string currentMaterialName;
+	std::string matName;
 
 	// parse OBJ commands
 	while (std::getline(objStream, line)) {
 		std::istringstream iss(line);
 		std::string cmd;
-
 		iss >> cmd;
 
 		if (cmd == "mtllib") {
 			std::string mtlFileName;
 			iss >> mtlFileName;
-			std::string mtlPath = filePrefix + mtlFileName;
 
-			bool success = (isEmbedded) ? loadEmbeddedMtl(mtlPath) : loadMtl(mtlPath);
-			if (!success) {
-				DEBUG_STDERR("  ERROR: MTL file " << mtlPath << " failed to parse" << std::endl);
+			if (!loadEmbeddedMtl(mtlFileName)) {
+				DEBUG_STDERR("ERROR: MTL file " << mtlFileName << " failed to parse" << std::endl);
+				return false;
 			}
 		}
 		else if (cmd == "usemtl") {
-			iss >> currentMaterialName;
+			iss >> matName;
 
-			// load texture for material
-			if (materials.count(currentMaterialName) > 0) {
-				std::string texturePath = filePrefix + materials[currentMaterialName].texturePath;
-				textureID = (isEmbedded) ? loadEmbeddedTexture(texturePath) : loadTexture(texturePath);
+			// load texture for material if exists
+			if (materials.count(matName) > 0) {
+				if (!loadEmbeddedTexture(materials[matName].texturePath)) {
+					DEBUG_STDERR("ERROR: Texture " << materials[matName].texturePath << " failed to parse" << std::endl);
+					return false;
+				}
 			}
 		}
 		else if (cmd == "v") {
-			VertexPos vertex;
+			VertexPos vertex{};
 			iss >> vertex.x >> vertex.y >> vertex.z;
 			vertices.push_back(vertex);
 		}
 		else if (cmd == "vt") {
-			TexCoord texCoord;
+			TexCoord texCoord{};
 			iss >> texCoord.u >> texCoord.v; // UV coordinates
 			texCoord.v = 1.0f - texCoord.v; // flip, OBJ's UV map seemed to export upside down
 			texCoords.push_back(texCoord);
 		}
 		else if (cmd == "vn") {
-			Normal normal;
+			Normal normal{};
 			iss >> normal.nx >> normal.ny >> normal.nz; // normals
 			normals.push_back(normal);
 		}
 		else if (cmd == "f") {
-			Face face;
+			Face face{};
 			char separator;
 
 			for (int i = 0; i < 3; i++) {
@@ -132,7 +128,7 @@ bool OBJLoader::parseObj(std::stringstream& objStream, const std::string& filePr
 			// comment or empty line, do nothing
 		}
 		else {
-			DEBUG_STDOUT("  Unsupported command \"" << cmd << "\" on line " << lineNum << std::endl);
+			DEBUG_STDOUT("WARN: Unsupported command \"" << cmd << "\" on line " << lineNum << std::endl);
 		}
 		lineNum++;
 	}
@@ -143,7 +139,7 @@ bool OBJLoader::parseObj(std::stringstream& objStream, const std::string& filePr
 bool OBJLoader::parseMtl(std::stringstream& mtlStream) {
 	std::string line;
 	int lineNum = 1;
-	Material currentMaterial;
+	Material mat;
 
 	// parse MTL commands
 	while (std::getline(mtlStream, line)) {
@@ -152,37 +148,111 @@ bool OBJLoader::parseMtl(std::stringstream& mtlStream) {
 		iss >> cmd;
 
 		if (cmd == "newmtl") {
-			if (!currentMaterial.name.empty()) {
-				materials[currentMaterial.name] = currentMaterial;
+			if (!mat.name.empty()) {
+				materials[mat.name] = mat;
 			}
-			iss >> currentMaterial.name;
+			iss >> mat.name;
 		}
 		else if (cmd == "map_Kd") {
-			iss >> currentMaterial.texturePath; // diffuse map
+			iss >> mat.texturePath; // diffuse map
+
+			// check if texture path is *.bmp
+			if (!std::equal(mat.texturePath.begin() + mat.texturePath.size() - 4, mat.texturePath.end(), ".bmp")) {
+				DEBUG_STDERR("ERROR: Cannot load " << mat.texturePath << ". Only .bmp textures are supported" << std::endl);
+				return false;
+			}
 		}
 		else if (cmd == "#" || cmd == " " || cmd == "") {
 			// comment or empty line, do nothing
 		}
 		else {
-			DEBUG_STDOUT("    Unsupported command \"" << cmd << "\" on line " << lineNum << std::endl);
+			DEBUG_STDOUT("WARN: Unsupported command \"" << cmd << "\" on line " << lineNum << std::endl);
 		}
 		lineNum++;
 	}
 
 	// set current material
-	if (!currentMaterial.name.empty()) {
-		materials[currentMaterial.name] = currentMaterial;
+	if (!mat.name.empty()) {
+		materials[mat.name] = mat;
 	}
 	return true;
 }
 
+// parse a 4-bit BMP from stream
+uint8_t* OBJLoader::parseBmp4(std::stringstream& bmpStream, int& width, int& height, int& channels) {
+
+	BITMAPFILEHEADER fileHeader{};
+	bmpStream.read(reinterpret_cast<char*>(&fileHeader), sizeof(BITMAPFILEHEADER));
+
+	// check BMP magic number ("BM" in little endian)
+	if (fileHeader.bfType != 0x4D42) {
+		DEBUG_STDERR("ERROR: Data in stream is not a BMP file" << std::endl);
+		return nullptr;
+	}
+
+	BITMAPINFOHEADER infoHeader{};
+	bmpStream.read(reinterpret_cast<char*>(&infoHeader), sizeof(BITMAPINFOHEADER));
+
+	// check if 4-bit BMP
+	if (infoHeader.biBitCount != 4) {
+		DEBUG_STDERR("ERROR: Only 4-bit BMP files are supported. Found " << infoHeader.biBitCount << "-bit BMP" << std::endl);
+		return nullptr;
+	}
+
+	width = infoHeader.biWidth;
+	height = infoHeader.biHeight;
+	channels = 3; // RGB
+
+	// get color palette; 4-bit BMP is 16 (2^4) colors, each is 4 bytes
+	const int paletteSize = 16;
+	RGBQUAD colorTable[paletteSize]{}; // RGB + reserved (4 bytes)
+	bmpStream.read(reinterpret_cast<char*>(colorTable), paletteSize * sizeof(RGBQUAD));
+
+	// find pixel data size
+	int rowSize = ((width + 1) / 2 + 3) & ~3; // row size padded to multiple of 4 bytes
+	size_t dataSize = static_cast<size_t>(rowSize) * height;
+	uint8_t* pixelData = new uint8_t[dataSize];
+
+	// move to pixel data start and start reading
+	bmpStream.seekg(fileHeader.bfOffBits, std::ios::beg);
+	bmpStream.read(reinterpret_cast<char*>(pixelData), dataSize);
+	uint8_t* imageData = new uint8_t[width * height * channels];
+
+	// read pixel data
+	for (int y = 0; y < height; y++) {
+		int flippedY = height - y - 1; // vertical flip BMP data, BMP stores pixels bottom to top
+
+		for (int x = 0; x < width; x += 2) {
+
+			// each byte has two 4-bit pixels, one in each nibble
+			uint8_t b = pixelData[flippedY * rowSize + x / 2];
+
+			// first pixel in high nibble
+			uint8_t high = (b >> 4) & 0x0F;
+			imageData[(y * width + x) * 3 + 0] = colorTable[high].rgbRed;
+			imageData[(y * width + x) * 3 + 1] = colorTable[high].rgbGreen;
+			imageData[(y * width + x) * 3 + 2] = colorTable[high].rgbBlue;
+
+			// second pixel in low nibble, if within bounds
+			if (x + 1 < width) {
+				uint8_t low = b & 0x0F;
+				imageData[(y * width + (x + 1)) * 3 + 0] = colorTable[low].rgbRed;
+				imageData[(y * width + (x + 1)) * 3 + 1] = colorTable[low].rgbGreen;
+				imageData[(y * width + (x + 1)) * 3 + 2] = colorTable[low].rgbBlue;
+			}
+		}
+	}
+	delete[] pixelData;
+
+	return imageData;
+}
+
 // set texture from stream
-GLuint OBJLoader::createTexture(const std::string& texturePath, unsigned char* imageData, int width, int height, int channels) {
-	GLuint textureID;
+GLuint OBJLoader::createTexture(const std::string& texturePath, uint8_t* imageData, int width, int height, int channels) {
 	glGenTextures(1, &textureID);
 
 	if (imageData) {
-		DEBUG_STDOUT("  Loaded texture " << texturePath << " (" << width << "x" << height << ", " << channels << " channels)" << std::endl);
+		DEBUG_STDOUT("Loaded texture " << texturePath << " (" << width << "x" << height << ", " << channels << " channels)" << std::endl);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 
 		// set texture wrapping
@@ -201,104 +271,51 @@ GLuint OBJLoader::createTexture(const std::string& texturePath, unsigned char* i
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else {
-		DEBUG_STDERR("  ERROR: Failed to load texture " << std::endl);
+		DEBUG_STDERR("ERROR: Failed to load texture " << std::endl);
 	}
 	return textureID;
 }
 
 // load embedded OBJ model with file name
-bool OBJLoader::loadEmbeddedObj(const std::string& embeddedFileName) {
-	std::stringstream objStream = loadEmbeddedResourceStream(embeddedFileName);
-	DEBUG_STDOUT("Loaded embedded OBJ " << embeddedFileName << std::endl);
-	return parseObj(objStream, "", true);
+bool OBJLoader::loadEmbeddedObj(const std::string& fileName) {
+	std::stringstream objStream = loadEmbeddedResource(fileName);
+	DEBUG_STDOUT("Loaded OBJ " << fileName << std::endl);
+	return parseObj(objStream);
 }
 
 // load embedded MTL with file name
-bool OBJLoader::loadEmbeddedMtl(const std::string& embeddedFileName) {
-	std::stringstream mtlStream = loadEmbeddedResourceStream(embeddedFileName);
-	DEBUG_STDOUT("Loaded embedded MTL " << embeddedFileName << std::endl);
+bool OBJLoader::loadEmbeddedMtl(const std::string& fileName) {
+	std::stringstream mtlStream = loadEmbeddedResource(fileName);
+	DEBUG_STDOUT("Loaded MTL " << fileName << std::endl);
 	return parseMtl(mtlStream);
 }
 
 // load embedded texture with file name
-GLuint OBJLoader::loadEmbeddedTexture(const std::string& embeddedFileName) {
-	int width = 0;
-	int height = 0;
-	int channels = 0;
+bool OBJLoader::loadEmbeddedTexture(const std::string& fileName) {
 
-	std::stringstream textureStream = loadEmbeddedResourceStream(embeddedFileName);
-	std::string textureData = textureStream.str();
-	const unsigned char* dataPtr = reinterpret_cast<const unsigned char*>(textureData.data());
-	size_t dataSize = textureData.size();
+	// parse BMP and create texture from it
+	std::stringstream bmpStream = loadEmbeddedResource(fileName);
+	int width = 0, height = 0, channels = 0;
+	uint8_t* imageData = parseBmp4(bmpStream, width, height, channels);
 
-	unsigned char* imageData = stbi_load_from_memory(dataPtr, static_cast<int>(dataSize), &width, &height, &channels, 0);
-	GLuint textureID = createTexture(embeddedFileName, imageData, width, height, channels);
-	stbi_image_free(imageData);
-
-	return textureID;
-}
-
-// load OBJ model at file path
-bool OBJLoader::loadObj(const std::string& objPath) {
-	std::ifstream objFile(objPath);
-
-	if (!objFile.is_open()) {
-		DEBUG_STDERR("ERROR: Failed to open OBJ file " << objPath << std::endl);
+	if (!imageData) {
+		DEBUG_STDERR("ERROR: Failed to parse BMP " << fileName << std::endl);
 		return false;
 	}
-	DEBUG_STDOUT("Loaded object " << objPath << std::endl);
+	textureID = createTexture(fileName, imageData, width, height, channels);
 
-	// get directory from OBJ file path
-	std::string::size_type slashIndex = objPath.find_last_of("/\\");
-	std::string dir = (slashIndex != std::string::npos) ? objPath.substr(0, slashIndex) : "";
+	// cleanup
+	delete[] imageData;
 
-	// process stream
-	std::stringstream buffer;
-	buffer << objFile.rdbuf();
-	bool success = parseObj(buffer, dir + "/", false);
-	objFile.close();
-
-	return success;	
-}
-
-// load materials from file path
-bool OBJLoader::loadMtl(const std::string& mtlPath) {
-	std::ifstream mtlFile(mtlPath);
-
-	if (!mtlFile.is_open()) {
-		DEBUG_STDERR("  ERROR: Failed to open MTL file " << mtlPath << std::endl);
-		return false;
-	}
-	DEBUG_STDOUT("  Loaded material " << mtlPath << std::endl);
-
-	// process stream
-	std::stringstream buffer;
-	buffer << mtlFile.rdbuf();
-	bool success = parseMtl(buffer);
-	mtlFile.close();
-
-	return success;
-}
-
-// load texture in OpenGL
-GLuint OBJLoader::loadTexture(const std::string& texturePath) {
-	int width = 0;
-	int height = 0;
-	int channels = 0;
-
-	unsigned char* data = stbi_load(texturePath.c_str(), &width, &height, &channels, 0);
-	GLuint textureID = createTexture(texturePath, data, width, height, channels);
-	stbi_image_free(data);
-
-	return textureID;
+	return true;
 }
 
 // setup OpenGL buffers
 void OBJLoader::setupBuffers(int contextIdx) {
+	DEBUG_STDOUT("Setting up buffers for context " << contextIdx << std::endl);
+
 	std::vector<float> vertexData;
 	std::vector<GLsizei> indices;
-
-	DEBUG_STDOUT("Setting up buffers for context " << contextIdx << std::endl);
 
 	// setup vertex data
 	for (const auto& face : faces) {

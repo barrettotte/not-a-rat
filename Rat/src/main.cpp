@@ -21,21 +21,21 @@ const int WINDOW_HEIGHT = 480;
 const char* WINDOW_TITLE = "RAT ATTACK";
 
 // create mapping between embedded resource ID and filename
-std::map<std::string, int> RESOURCE_MAPPING = {
+const std::map<std::string, int> RESOURCE_MAPPING = {
 	{"rat.obj", RAT_OBJ},
-	{"rat.png", RAT_PNG},
+	{"rat.bmp", RAT_BMP},
 	{"rat.mtl", RAT_MTL}
 };
 
 // angle to increment model by each frame
-float MODEL_ROTATION_SPEED = 0.03f;
+const float MODEL_ROTATION_SPEED = 0.03f;
 
 // camera settings
-float CAMERA_POS[3] = {-1.0f, -1.5f, 1.5f}; // (X,Y,Z)
-float CAMERA_ASPECT = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
-float CAMERA_FOV = 20.0f * ((float) M_PI / 180.0f);
-float CAMERA_NEAR = 0.1f;
-float CAMERA_FAR = 100.0f;
+const float CAMERA_POS[3] = {-1.0f, -1.5f, 1.5f}; // (X,Y,Z)
+const float CAMERA_ASPECT = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
+const float CAMERA_FOV = 20.0f * ((float) M_PI / 180.0f);
+const float CAMERA_NEAR = 0.1f;
+const float CAMERA_FAR = 100.0f;
 
 // GLSL for processing vertices
 const char* VERTEX_SHADER_SRC = "#version 330 core\n"
@@ -66,9 +66,9 @@ const char* FRAGMENT_SHADER_SRC = "#version 330 core\n"
 	"}\0";
 
 // rotation matrix about y-axis
-void setRotationMatrixY(float angle, float* matrix) {
-	float cosAngle = cos(angle);
-	float sinAngle = sin(angle);
+static void setRotationMatrixY(float angle, float* matrix) {
+	const float cosAngle = cos(angle);
+	const float sinAngle = sin(angle);
 
 	matrix[0] = cosAngle;
 	matrix[1] = 0.0f;
@@ -92,15 +92,15 @@ void setRotationMatrixY(float angle, float* matrix) {
 }
 
 // view matrix for camera
-void setViewMatrix(float* viewMatrix, float cameraX, float cameraY, float cameraZ) {
-	float center[3] = {0.0f};
+static void setViewMatrix(float* viewMatrix, float cameraX, float cameraY, float cameraZ) {
+	const float center[3] = {0.0f};
 	float up[3] = {0.0f, 1.0f, 0.0f};
 
 	// forward vector
 	float fwd[3] = {center[0] - cameraX, center[1] - cameraY, center[2] - cameraZ};
 
 	// normalize forward vector
-	float fwdLength = sqrt((fwd[0] * fwd[0]) + (fwd[1] * fwd[1]) + (fwd[2] * fwd[2]));
+	const float fwdLength = sqrt((fwd[0] * fwd[0]) + (fwd[1] * fwd[1]) + (fwd[2] * fwd[2]));
 	fwd[0] /= fwdLength;
 	fwd[1] /= fwdLength;
 	fwd[2] /= fwdLength;
@@ -113,7 +113,7 @@ void setViewMatrix(float* viewMatrix, float cameraX, float cameraY, float camera
 	};
 
 	// normalize right vector
-	float rightLength = sqrt((right[0] * right[0]) + (right[1] * right[1]) + (right[2] * right[2]));
+	const float rightLength = sqrt((right[0] * right[0]) + (right[1] * right[1]) + (right[2] * right[2]));
 	right[0] /= rightLength;
 	right[1] /= rightLength;
 	right[2] /= rightLength;
@@ -146,8 +146,8 @@ void setViewMatrix(float* viewMatrix, float cameraX, float cameraY, float camera
 }
 
 // projection matrix for converting 3D coords to 2D coords
-void setPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, float camNear, float camFar) {
-	float tanHalfFOV = tan(fov / 2.0f);
+static void setPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, float near, float far) {
+	const float tanHalfFOV = tan(fov / 2.0f);
 
 	projectionMatrix[0] = 1.0f / (aspect * tanHalfFOV);
 	projectionMatrix[1] = 0.0f;
@@ -161,17 +161,17 @@ void setPerspectiveMatrix(float* projectionMatrix, float fov, float aspect, floa
 
 	projectionMatrix[8] = 0.0f;
 	projectionMatrix[9] = 0.0f;
-	projectionMatrix[10] = -(camFar + camNear) / (camFar - camNear);
+	projectionMatrix[10] = -(far + near) / (far - near);
 	projectionMatrix[11] = -1.0f;
 
 	projectionMatrix[12] = 0.0f;
 	projectionMatrix[13] = 0.0f;
-	projectionMatrix[14] = -(2.0f * camFar * camNear) / (camFar - camNear);
+	projectionMatrix[14] = -(2.0f * far * near) / (far - near);
 	projectionMatrix[15] = 0.0f;
 }
 
 // matrix to flip on y-axis
-void setFlipMatrixY(float* matrix, float flip) {
+static void setFlipMatrixY(float* matrix, float flip) {
 	matrix[0] = 1.0f;
 	matrix[1] = 0.0f;
 	matrix[2] = 0.0f;
@@ -194,7 +194,7 @@ void setFlipMatrixY(float* matrix, float flip) {
 }
 
 // multiply two 4x4 matrices
-void multiplyMat4(const float* a, const float* b, float* product) {
+static void multiplyMat4(const float* a, const float* b, float* product) {
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			product[i * 4 + j] = (a[i * 4 + 0] * b[0 * 4 + j]) +
@@ -206,7 +206,7 @@ void multiplyMat4(const float* a, const float* b, float* product) {
 }
 
 // get random int in range
-int getRandomInRange(int min, int max) {
+static int getRandomInRange(int min, int max) {
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_int_distribution<> dis(min, max);
@@ -214,25 +214,25 @@ int getRandomInRange(int min, int max) {
 }
 
 // change background color over time
-void setBackgroundColor(float t) {
-	float r = (sin(t * 1.0f) * 0.5f) + 0.5f;
-	float g = (sin(t * 1.3f) * 0.5f) + 0.5f;
-	float b = (sin(t * 1.7f) * 0.5f) + 0.5f;
+static void setBackgroundColor(float t) {
+	const float r = (sin(t * 1.0f) * 0.5f) + 0.5f;
+	const float g = (sin(t * 1.3f) * 0.5f) + 0.5f;
+	const float b = (sin(t * 1.7f) * 0.5f) + 0.5f;
 	glClearColor(r, g, b, 1.0f);
 }
 
 // trigger on every window resize
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
 // compile and link shaders
-GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc) {
+static GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc) {
+	DEBUG_STDOUT("Compiling shaders" << std::endl);
+
 	GLint status = GL_FALSE;
 	const int LOG_SIZE = 512;
 	char log[LOG_SIZE];
-
-	DEBUG_STDOUT("Compiling shaders" << std::endl);
 	
 	// compile vertex shader
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -243,8 +243,8 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
 	if (status != GL_TRUE) {
 		glGetShaderInfoLog(vertexShader, LOG_SIZE, 0, log);
-		DEBUG_STDERR("ERROR: Vertex shader compilation failed.\n" << log << std::endl);
-		std::exit(-1);
+		DEBUG_STDERR("  ERROR: Vertex shader compilation failed.\n" << log << std::endl);
+		return GL_FALSE;
 	}
 	DEBUG_STDOUT("  Compiled vertex shader" << std::endl);
 
@@ -257,8 +257,8 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
 	if (status != GL_TRUE) {
 		glGetShaderInfoLog(fragmentShader, LOG_SIZE, 0, log);
-		DEBUG_STDERR("ERROR: Fragment shader compilation failed.\n" << log << std::endl);
-		std::exit(-1);
+		DEBUG_STDERR("  ERROR: Fragment shader compilation failed.\n" << log << std::endl);
+		return GL_FALSE;
 	}
 	DEBUG_STDOUT("  Compiled fragment shader" << std::endl);
 
@@ -271,8 +271,8 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	// check if linked successfully
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
 	if (status != GL_TRUE) {
-		DEBUG_STDERR("ERROR: Shader linking failed.\n" << log << std::endl);
-		std::exit(-1);
+		DEBUG_STDERR("  ERROR: Shader linking failed.\n" << log << std::endl);
+		return GL_FALSE;
 	}
 	DEBUG_STDOUT("  Linked shaders" << std::endl);
 
@@ -281,6 +281,24 @@ GLuint createShaderProgram(const char* vertexShaderSrc, const char* fragmentShad
 	glDeleteShader(fragmentShader);
 
 	return shaderProgram;
+}
+
+// cleanup resources
+static void cleanup(std::vector<GLFWwindow*> windows, GLuint shaderProgram) {
+	for (int i = 0; i < windows.size(); i++) {
+		glfwDestroyWindow(windows[i]);
+	}
+	if (shaderProgram) {
+		glDeleteProgram(shaderProgram);
+	}
+	glfwTerminate();
+}
+
+// process input for window
+static void processInput(GLFWwindow* window) {
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+		glfwSetWindowShouldClose(window, true);
+	}
 }
 
 // entry point
@@ -296,11 +314,10 @@ int main(int argc, char** argv) {
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	// get primary monitor resolution
-	GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
-	const GLFWvidmode* videoMode = glfwGetVideoMode(primaryMonitor);
+	const GLFWvidmode* videoMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 	const int screenWidth = videoMode->width;
 	const int screenHeight = videoMode->height;
-	DEBUG_STDOUT("Primary monitor is " << screenWidth << "x" << screenHeight << std::endl;)
+	DEBUG_STDOUT("Primary monitor is " << screenWidth << "x" << screenHeight << std::endl);
 
 	// create windows
 	std::vector<GLFWwindow*> windows;
@@ -308,73 +325,57 @@ int main(int argc, char** argv) {
 		std::string title = "[" + std::to_string(i) + "] " + WINDOW_TITLE;
 		GLFWwindow* shared = (i == 0) ? NULL : windows[0];
 		GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, title.c_str(), NULL, shared);
-		
+
 		if (!window) {
 			DEBUG_STDERR("ERROR: Failed to create GLFW window " << i << std::endl);
-			glfwTerminate();
+			cleanup(windows, NULL);
 			return -1;
 		}
 		glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 		// set window position randomly
-		int randX = getRandomInRange(10, screenWidth - WINDOW_WIDTH - 10);
-		int randY = getRandomInRange(10, screenHeight - WINDOW_HEIGHT - 10);
+		const int randX = getRandomInRange(10, screenWidth - WINDOW_WIDTH - 10);
+		const int randY = getRandomInRange(10, screenHeight - WINDOW_HEIGHT - 10);
 		glfwSetWindowPos(window, randX, randY);
 
 		windows.push_back(window);
 	}
-
 	DEBUG_STDOUT("Created " << windows.size() << " window(s)" << std::endl);
-
-	for (int i = 1; i < windows.size(); i++) {
-		if (glfwGetWindowAttrib(windows.at(i), GLFW_CONTEXT_VERSION_MAJOR) == glfwGetWindowAttrib(windows.at(0), GLFW_CONTEXT_VERSION_MAJOR)) {
-			DEBUG_STDOUT("Context sharing successful for window " << i << std::endl);
-		}
-		else {
-			DEBUG_STDERR("Context sharing failed for window " << i << std::endl);
-			std::exit(-1);
-		}
-	}
 
 	// start with first window
 	glfwMakeContextCurrent(windows[0]);
 
-	// load all OpenGL function pointers
+	// load all OpenGL function pointers via Glad
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		DEBUG_STDERR("ERROR: Failed to initialize GLAD" << std::endl);
+		cleanup(windows, NULL);
 		return -1;
 	}
 
-	// enable wireframe mode
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
 	// create shader program
 	GLuint shaderProgram = createShaderProgram(VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC);
-	CHECK_ERROR_GL();
+	if (shaderProgram == GL_FALSE) {
+		DEBUG_STDERR("ERROR: Failed to compile shader program." << std::endl);
+		cleanup(windows, NULL);
+		return -1;
+	}
 
+	// load embedded OBJ model
 	OBJLoader objLoader;
 	objLoader.setResourceMapping(RESOURCE_MAPPING);
 
-	// load OBJ model from filesystem
-	//if (!objLoader.loadObj("assets/rat.obj")) {
-	//	DEBUG_STDERR("ERROR: Failed to load OBJ file" << std::endl);
-	//	return -1;
-	//}
-
-	// load embedded OBJ model
 	if (!objLoader.loadEmbeddedObj("rat.obj")) {
 		DEBUG_STDERR("ERROR: Failed to load OBJ file" << std::endl);
+		cleanup(windows, NULL);
 		return -1;
 	}
 
 	// configure each window context
 	for (int i = 0; i < windows.size(); i++) {
-
-		// setup buffers for each context
 		glfwMakeContextCurrent(windows.at(i));
-		objLoader.setupBuffers(i);
+		objLoader.setupBuffers(i); // setup buffers for this window context
 
-		// misc config
+		// misc window config
 		glEnable(GL_DEPTH_TEST); // enable 3D depth to render correctly
 		glfwSwapInterval(1);     // enable VSync
 	}
@@ -397,15 +398,25 @@ int main(int argc, char** argv) {
 	float rotationAngleY = 0.0f;
 	float t = 0.0f;
 	GLFWwindow* window = windows[0];
+	size_t windowsActive = windows.size();
 
-	// main loop (does not allow normal exit)
-	while (true) {
-		t = (float) glfwGetTime();
+	// draw windows
+	while (windowsActive > 0) {
+		t = (float)glfwGetTime();
 
+		// note: this is single threaded, so dragging the window would pause all other windows.
+		//   you could fix this by rendering in separate threads, but this is fine for now.
 		for (int i = 0; i < windows.size(); i++) {
 			window = windows[i];
+
+			if (!window) {
+				continue; // if window was closed, continue to next
+			}
 			glfwMakeContextCurrent(window);
 			int windowOffset = i; // make each window slightly different
+
+			// input
+			processInput(window);
 
 			// clear screen
 			setBackgroundColor(t + windowOffset);
@@ -427,22 +438,22 @@ int main(int argc, char** argv) {
 			// render
 			objLoader.renderModel(i);
 
-			// swap rendering buffers
+			// swap rendering buffers and check I/O event
 			glfwSwapBuffers(window);
-
-			// check I/O events
 			glfwPollEvents();
+
+			if (glfwWindowShouldClose(window)) {
+				glfwDestroyWindow(windows[i]);
+				windows[i] = nullptr;
+				windowsActive--;
+				DEBUG_STDOUT("Closed window " << i << std::endl);
+			}
 		}
 
 		// update model rotation
 		rotationAngleY += MODEL_ROTATION_SPEED;
 	}
-
-	// clean up
-	for (int i = 0; i < windows.size(); i++) {
-		glfwDestroyWindow(windows[i]);
-	}
-	glfwTerminate();
+	cleanup(windows, shaderProgram);
 
 	return 0;
 }

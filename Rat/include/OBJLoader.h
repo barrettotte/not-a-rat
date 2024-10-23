@@ -35,13 +35,10 @@ public:
 	~OBJLoader();
 
 	// set resource mapping for embedded files
-	void setResourceMapping(std::map<std::string, int> resourceMapping);
+	void setResourceMapping(std::map<std::string, int> rm);
 
 	// load embedded OBJ from binary
-	bool loadEmbeddedObj(const std::string& embeddedFileName);
-
-	// load OBJ file at path
-	bool loadObj(const std::string& filePath);
+	bool loadEmbeddedObj(const std::string& fileName);
 
 	// setup OpenGL buffers
 	void setupBuffers(int contextIdx);
@@ -70,28 +67,25 @@ private:
 	GLuint textureID;
 
 	// load embedded resource using rc file and resource header definitions
-	std::stringstream loadEmbeddedResourceStream(const std::string& fileName);
+	std::stringstream loadEmbeddedResource(const std::string& fileName);
 
 	// parse OBJ from stream
-	bool parseObj(std::stringstream& objStream, const std::string& filePrefix, bool isEmbedded);
+	bool parseObj(std::stringstream& objStream);
 
 	// parse MTL from stream
 	bool parseMtl(std::stringstream& mtlStream);
 
-	// create texture from image data
-	GLuint createTexture(const std::string& texturePath, unsigned char* imageData, int width, int height, int channels);
+	// parse 4-bit BMP from stream
+	uint8_t* parseBmp4(std::stringstream& bmpStream, int& width, int& height, int& channels);
 
-	// load MTL file at path
-	bool loadMtl(const std::string& filePath);
+	// create texture from image data
+	GLuint createTexture(const std::string& texturePath, uint8_t* imageData, int width, int height, int channels);
 
 	// load embedded MTL from binary
 	bool loadEmbeddedMtl(const std::string& embeddedFileName);
 
-	// load texture file at path
-	GLuint loadTexture(const std::string& filePath);
-
 	// load embedded texture from binary
-	GLuint loadEmbeddedTexture(const std::string& embeddedFileName);
+	bool loadEmbeddedTexture(const std::string& embeddedFileName);
 };
 
 #endif
