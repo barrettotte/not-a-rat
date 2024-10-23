@@ -20,7 +20,9 @@ This is making me very interested in AV bypass though, so I'll probably do somet
 - Message box notifies that install was successful and `Rat.exe` is executed
 - `Rat.exe` displays multiple windows of rotating 3D model of a rat from Halo 3
 
+<br>
 
+[![demo of not-a-rat](docs/thumbnail.png)](https://barrettotte.github.io/not-a-rat/)
 
 ## Asset Prep
 
