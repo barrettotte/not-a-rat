@@ -1,3 +1,7 @@
-Rat/src/glad.c -linguist-vendored
-Rat/include/glad/* -linguist-vendored
-Rat/include/KHR/* -linguist-vendored
+
+# generated file
+Rat/src/glad.c linguist-vendored
+Rat/include/
+
+Rat/include/glad/* linguist-vendored
+Rat/include/KHR/* linguist-vendored

