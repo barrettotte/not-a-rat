@@ -107,7 +107,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\libraries\glad-3.3;D:\libraries\glfw-3.4.bin.WIN64\include;D:\repos\not-a-virus\Rat\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\libraries\glad-3.3;D:\libraries\glfw-3.4.bin.WIN64\include;D:\repos\not-a-rat\Rat\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -123,7 +123,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\libraries\glad-3.3;D:\libraries\glfw-3.4.bin.WIN64\include;D:\repos\not-a-virus\Rat\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\libraries\glad-3.3;D:\libraries\glfw-3.4.bin.WIN64\include;D:\repos\not-a-rat\Rat\include</AdditionalIncludeDirectories>
       <Optimization>MinSpace</Optimization>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
