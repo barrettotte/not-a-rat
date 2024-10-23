@@ -1,4 +1,4 @@
-// Display rotating 3D model of rat from Halo 3
+// Display multiple windows of a rotating 3D model of a rat from Halo 3
 
 #define _USE_MATH_DEFINES
 #include <cmath>
@@ -15,9 +15,10 @@
 #include "resource.h"
 
 // window settings
-const int WINDOW_COUNT = 25;
+const int WINDOW_COUNT = 50;
 const int WINDOW_WIDTH = 640;
 const int WINDOW_HEIGHT = 480;
+const char* WINDOW_TITLE = "RAT ATTACK";
 
 // create mapping between embedded resource ID and filename
 std::map<std::string, int> RESOURCE_MAPPING = {
@@ -304,7 +305,7 @@ int main(int argc, char** argv) {
 	// create windows
 	std::vector<GLFWwindow*> windows;
 	for (int i = 0; i < WINDOW_COUNT; i++) {
-		std::string title = "[" + std::to_string(i) + "] YOU JUST GOT RATTED!";
+		std::string title = "[" + std::to_string(i) + "] " + WINDOW_TITLE;
 		GLFWwindow* shared = (i == 0) ? NULL : windows[0];
 		GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, title.c_str(), NULL, shared);
 		

@@ -7,17 +7,16 @@ and refresh a bit on MASM.
 
 ## Summary
 
-- User runs installer, `Discord-Nitro-Free-2024-v2.4.exe`
+- User runs installer, `Discord-Nitro-Free-2024-v2.7.exe`
 - Prompts user if they trust the program and want to install
   - Clicking "No", just continues to display prompt
 - After clicking "Yes", installer downloads "second stage" named `Rat.exe` and places on Desktop
+- Alert that install was successful pops up and `Rat.exe` is executed
 - `Rat.exe` displays rotating 3D model of a rat from Halo 3 
 
-Get it? Rat as in RAT (Remote Access Trojan)...this was dumb...
+Get it? Rat as in RAT (Remote Access Trojan)...haha...
 
-TODO: package rat assets in binary with .rc files
-
-TODO: screenshots and summary
+TODO: screenshots/video
 
 ## Development
 
@@ -27,6 +26,8 @@ TODO: screenshots and summary
 - [Glad](https://glad.dav1d.de/)
   - Language=C/C++, Specification=OpenGL, GL=3.3, Profile=Core
   - Generate a loader enabled
+
+File download in installer can be tested locally using - `python3 -m http.server`
 
 ## References
 
