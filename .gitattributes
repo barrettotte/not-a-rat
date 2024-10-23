@@ -1,7 +1,8 @@
 
 # generated file
 Rat/src/glad.c linguist-vendored
-Rat/include/
 
+# dependencies
+Rat/include/stb_image.h linguist-vendored
 Rat/include/glad/* linguist-vendored
 Rat/include/KHR/* linguist-vendored
