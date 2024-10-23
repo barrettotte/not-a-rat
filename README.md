@@ -3,7 +3,7 @@
 A joke "virus" using OpenGL and a little MASM.
 
 This was an excuse to learn the basics of parsing an OBJ file and rendering a 3D model in OpenGL.
-I also wanted to little refresh on MASM which is why the installer is in assembly.
+I also wanted a little refresh on MASM which is why the installer is in assembly.
 
 This is really just a toy and obviously gets hit by Microsoft Smart Screen immediately 
 and is not in any way stealthy or practical.
